@@ -138,11 +138,43 @@ export interface PurchaseTypeSchema {
 
 export type BriefingStep = 'idle' | 'greeting' | 'task_list' | 'task_detail';
 
-export type ProcurementCategory = 'pr_approval' | 'bidding' | 'contract' | 'po_delivery' | 'vendor';
+// 에이전트 레지스트리 (Mock, 읽기 전용)
+export interface BriefingAgent {
+  id: string;
+  name: string;
+  description: string;
+  model?: string;
+}
 
+// 역할
+export type BriefingRoleId = 'requester' | 'manager' | 'admin';
+
+export interface BriefingRole {
+  id: BriefingRoleId;
+  label: string;
+  description: string;
+  icon: string;
+  sortOrder: number;
+}
+
+// 브리핑 항목 (기존 BriefingCategoryConfig 대체)
+export interface BriefingItem {
+  id: string;
+  roleId: BriefingRoleId;
+  label: string;
+  icon: string;
+  color: string;
+  description: string;
+  agentId?: string;
+  detailUrlTemplate?: string;
+  enabled: boolean;
+  sortOrder: number;
+}
+
+// 런타임 태스크 (category → itemId)
 export interface ProcurementTask {
   id: string;
-  category: ProcurementCategory;
+  itemId: string;
   title: string;
   description: string;
   urgency: 'high' | 'medium' | 'low';
@@ -152,6 +184,7 @@ export interface ProcurementTask {
   department?: string;
   relatedPrId?: string;
   vendor?: string;
+  detailUrl?: string;
 }
 
 // 대시보드 필터
@@ -159,4 +192,43 @@ export interface DashboardFilters {
   search: string;
   status: PRStatus | 'all';
   category: string | 'all';
+}
+
+// ========== 관리자 브리핑 설정 ==========
+
+export interface BriefingTaskTemplate {
+  id: string;
+  itemId: string;
+  title: string;
+  description: string;
+  urgency: 'high' | 'medium' | 'low';
+  amount?: number;
+  dueDate?: string;
+  requester?: string;
+  department?: string;
+  vendor?: string;
+  detailUrlOverride?: string;
+  enabled: boolean;
+}
+
+// ========== 사용자 브리핑 개인화 ==========
+
+export interface UserItemPref {
+  itemId: string;
+  visible: boolean;
+  sortOrder: number;
+}
+
+export type BriefingDensity = 'compact' | 'comfortable';
+export type UrgencyFilter = 'all' | 'medium_up' | 'high_only';
+
+export interface UserBriefingPrefs {
+  activeRoleId: BriefingRoleId;
+  itemPrefs: UserItemPref[];
+  density: BriefingDensity;
+  urgencyFilter: UrgencyFilter;
+  showAmounts: boolean;
+  showDueDates: boolean;
+  greetingName: string;
+  maxTasksPerItem: number;
 }

@@ -34,23 +34,6 @@ export const URGENCY_LABELS: Record<Urgency, string> = {
 
 export const DEPARTMENTS = ['경영지원팀', '개발팀', '마케팅팀', '인사팀', '재무팀'];
 
-// 구매담당자 업무 카테고리
-export const PROCUREMENT_CATEGORY_LABELS: Record<string, string> = {
-  pr_approval: '구매요청 승인',
-  bidding: '입찰/견적',
-  contract: '계약 관리',
-  po_delivery: '발주/납품',
-  vendor: '협력사 관리',
-};
-
-export const PROCUREMENT_CATEGORY_COLORS: Record<string, { bg: string; text: string; dot: string; border: string; icon: string }> = {
-  pr_approval: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-400', border: 'border-l-amber-400', icon: '📝' },
-  bidding: { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-400', border: 'border-l-blue-400', icon: '📊' },
-  contract: { bg: 'bg-violet-50', text: 'text-violet-700', dot: 'bg-violet-400', border: 'border-l-violet-400', icon: '📄' },
-  po_delivery: { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-400', border: 'border-l-green-400', icon: '📦' },
-  vendor: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-400', border: 'border-l-red-400', icon: '🏢' },
-};
-
 export function formatKRW(amount: number): string {
   return new Intl.NumberFormat('ko-KR', {
     style: 'currency',

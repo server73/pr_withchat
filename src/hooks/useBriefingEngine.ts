@@ -2,6 +2,8 @@
 
 import { useReducer, useCallback, useRef } from 'react';
 import type { ChatMessage, BriefingStep, ProcurementTask, PurchaseRequest, QuickReplyOption } from '@/types';
+import { useBriefingConfig } from '@/lib/briefingConfigContext';
+import { useUserBriefingPrefs } from '@/lib/userBriefingPrefsContext';
 import {
   generateAllProcurementTasks,
   formatBriefingGreeting,
@@ -77,6 +79,16 @@ export function useBriefingEngine() {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prsRef = useRef<PurchaseRequest[]>([]);
 
+  // Context 소비
+  const { getEnabledItems, getEnabledTemplates, items } = useBriefingConfig();
+  const { prefs } = useUserBriefingPrefs();
+
+  // useRef로 최신 값 유지 (setTimeout 클로저에서 사용)
+  const configRef = useRef({ getEnabledItems, getEnabledTemplates, items });
+  configRef.current = { getEnabledItems, getEnabledTemplates, items };
+  const prefsRef = useRef(prefs);
+  prefsRef.current = prefs;
+
   const addBotMessage = useCallback(
     (text: string, options?: QuickReplyOption[], taskCards?: ProcurementTask[], delay = 700) => {
       dispatch({ type: 'SET_TYPING', isTyping: true });
@@ -103,12 +115,17 @@ export function useBriefingEngine() {
       dispatch({ type: 'RESET' });
       prsRef.current = purchaseRequests;
 
-      const allTasks = generateAllProcurementTasks(purchaseRequests);
+      const cfg = configRef.current;
+      const p = prefsRef.current;
+
+      const enabledItems = cfg.getEnabledItems(p.activeRoleId);
+      const enabledTemplates = cfg.getEnabledTemplates(p.activeRoleId);
+
+      const allTasks = generateAllProcurementTasks(purchaseRequests, enabledItems, enabledTemplates, p);
       dispatch({ type: 'SET_TASKS', tasks: allTasks });
       dispatch({ type: 'SET_STEP', step: 'greeting' });
 
-      // 인사 메시지
-      const greetingText = formatBriefingGreeting('김관리자', allTasks);
+      const greetingText = formatBriefingGreeting(p.greetingName, allTasks, enabledItems);
       dispatch({ type: 'SET_TYPING', isTyping: true });
 
       setTimeout(() => {
@@ -118,14 +135,13 @@ export function useBriefingEngine() {
           message: { id: genId(), sender: 'bot', text: greetingText, timestamp: new Date() },
         });
 
-        // 할일 카드 목록 전송
         dispatch({ type: 'SET_STEP', step: 'task_list' });
 
         if (allTasks.length > 0) {
           const listIntro = formatTaskListIntro(allTasks);
           addBotMessage(listIntro, undefined, allTasks, 500);
         } else {
-          addBotMessage('✨ 현재 처리 대기 중인 업무가 없습니다.\n오늘은 여유로운 하루가 되시겠네요! 대시보드에서 전체 현황을 확인하실 수 있어요.', [
+          addBotMessage('현재 처리 대기 중인 업무가 없습니다.\n오늘은 여유로운 하루가 되시겠네요! 대시보드에서 전체 현황을 확인하실 수 있어요.', [
             { label: '대시보드로 이동', value: '__dashboard__' },
           ], undefined, 500);
         }
@@ -138,7 +154,6 @@ export function useBriefingEngine() {
     (taskId: string) => {
       dispatch({ type: 'SET_STEP', step: 'task_detail', taskId });
 
-      // 사용자 메시지로 선택 표시
       const selectedTask = state.allTasks.find((t) => t.id === taskId);
       if (selectedTask) {
         dispatch({ type: 'ADD_USER_MESSAGE', text: selectedTask.title });
@@ -147,12 +162,12 @@ export function useBriefingEngine() {
       const task = state.allTasks.find((t) => t.id === taskId);
       if (!task) return;
 
-      const detailText = getTaskDetailText(task, prsRef.current);
+      const cfg = configRef.current;
+      const detailText = getTaskDetailText(task, prsRef.current, cfg.items);
 
-      // 카테고리별 액션 버튼
       const options: QuickReplyOption[] = [];
 
-      if (task.category === 'pr_approval' && task.relatedPrId) {
+      if (task.itemId === 'pr_approval' && task.relatedPrId) {
         const pr = prsRef.current.find((p) => p.id === task.relatedPrId);
         if (pr?.status === 'pending') {
           options.push({ label: '승인하기', value: `__approve__:${task.relatedPrId}` });

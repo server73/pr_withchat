@@ -1,104 +1,5 @@
-import type { PurchaseRequest, ProcurementTask } from '@/types';
+import type { PurchaseRequest, ProcurementTask, BriefingItem, BriefingTaskTemplate, UserBriefingPrefs, UserItemPref } from '@/types';
 import { STATUS_LABELS, CATEGORY_LABELS, URGENCY_LABELS, formatKRW } from './constants';
-
-// ========== 구매담당자 업무 Mock 데이터 ==========
-
-const PROCUREMENT_TASK_CATEGORIES: Record<string, { label: string; icon: string; color: string }> = {
-  pr_approval: { label: '구매요청 승인', icon: 'FileText', color: 'amber' },
-  bidding: { label: '입찰/견적', icon: 'Clock', color: 'blue' },
-  contract: { label: '계약 관리', icon: 'FileText', color: 'violet' },
-  po_delivery: { label: '발주/납품', icon: 'Package', color: 'green' },
-  vendor: { label: '협력사 관리', icon: 'Monitor', color: 'red' },
-};
-
-// 구매요청 승인 외의 구매담당자 업무 mock 데이터
-const MOCK_PROCUREMENT_TASKS: ProcurementTask[] = [
-  // 입찰/견적
-  {
-    id: 'BID-001',
-    category: 'bidding',
-    title: '서버 장비 입찰 마감 임박',
-    description: '3개 업체 견적 비교 필요 — 마감 D-2',
-    urgency: 'high',
-    amount: 15000000,
-    dueDate: '2025-02-09',
-    vendor: '한국IT솔루션 외 2곳',
-  },
-  {
-    id: 'BID-002',
-    category: 'bidding',
-    title: '사무가구 견적 요청 발송',
-    description: '스탠딩 데스크 6대 — 견적서 3곳 대기 중',
-    urgency: 'medium',
-    amount: 3600000,
-    dueDate: '2025-02-14',
-    relatedPrId: 'PR-2025-003',
-  },
-
-  // 계약 관리
-  {
-    id: 'CTR-001',
-    category: 'contract',
-    title: '복합기 유지보수 계약 갱신',
-    description: '(주)오피스프로 — 계약 만료 D-7',
-    urgency: 'high',
-    dueDate: '2025-02-14',
-    vendor: '(주)오피스프로',
-    amount: 12000000,
-  },
-  {
-    id: 'CTR-002',
-    category: 'contract',
-    title: 'IT 장비 연간 단가 계약 검토',
-    description: '델/레노버 노트북 단가 계약서 검토 대기',
-    urgency: 'medium',
-    vendor: 'Dell Korea / Lenovo',
-    amount: 50000000,
-  },
-
-  // 발주/납품
-  {
-    id: 'PO-001',
-    category: 'po_delivery',
-    title: '외장 모니터 발주 확인',
-    description: 'LG전자 — 8대 발주 완료, 납품 예정 2/12',
-    urgency: 'low',
-    amount: 4800000,
-    dueDate: '2025-02-12',
-    relatedPrId: 'PR-2025-007',
-    vendor: 'LG전자',
-  },
-  {
-    id: 'PO-002',
-    category: 'po_delivery',
-    title: '복사용지 입고 검수 필요',
-    description: '한솔제지 — 20박스 도착, 검수 대기',
-    urgency: 'medium',
-    amount: 120000,
-    relatedPrId: 'PR-2025-011',
-    vendor: '한솔제지',
-  },
-
-  // 협력사 관리
-  {
-    id: 'VND-001',
-    category: 'vendor',
-    title: '신규 협력사 등록 심사',
-    description: '(주)테크서플라이 — 서류 심사 진행 중',
-    urgency: 'medium',
-    vendor: '(주)테크서플라이',
-  },
-  {
-    id: 'VND-002',
-    category: 'vendor',
-    title: '협력사 평가 마감 임박',
-    description: '2024년 하반기 협력사 실적 평가 — D-3',
-    urgency: 'high',
-    dueDate: '2025-02-10',
-  },
-];
-
-export { PROCUREMENT_TASK_CATEGORIES };
 
 // ========== 유틸리티 ==========
 
@@ -109,12 +10,23 @@ export function getTimeGreeting(): string {
   return '좋은 저녁이에요';
 }
 
+// 상세 URL 템플릿 resolve
+export function resolveDetailUrl(template: string, task: ProcurementTask): string {
+  return template
+    .replace('{taskId}', task.id)
+    .replace('{prId}', task.relatedPrId || '');
+}
+
 // PR 데이터에서 승인 대기 태스크 생성
-function prToApprovalTask(pr: PurchaseRequest): ProcurementTask {
+function prToApprovalTask(pr: PurchaseRequest, item: BriefingItem): ProcurementTask {
   const urgency = pr.details.type === 'mro' && pr.details.urgency === 'high' ? 'high' : 'medium';
+  const taskId = `PRA-${pr.id}`;
+  const detailUrl = item.detailUrlTemplate
+    ? item.detailUrlTemplate.replace('{taskId}', taskId).replace('{prId}', pr.id)
+    : undefined;
   return {
-    id: `PRA-${pr.id}`,
-    category: 'pr_approval',
+    id: taskId,
+    itemId: 'pr_approval',
     title: pr.title,
     description: `${pr.requester} (${pr.department}) — ${formatKRW(pr.totalAmount)}`,
     urgency: urgency as 'high' | 'medium' | 'low',
@@ -122,45 +34,123 @@ function prToApprovalTask(pr: PurchaseRequest): ProcurementTask {
     requester: pr.requester,
     department: pr.department,
     relatedPrId: pr.id,
+    detailUrl,
   };
 }
 
-// 전체 브리핑 태스크 생성
-export function generateAllProcurementTasks(purchaseRequests: PurchaseRequest[]): ProcurementTask[] {
-  const prApprovals = purchaseRequests
-    .filter((pr) => pr.status === 'pending')
-    .map(prToApprovalTask);
-
-  return [...prApprovals, ...MOCK_PROCUREMENT_TASKS];
+// 템플릿을 ProcurementTask로 변환
+function templateToTask(t: BriefingTaskTemplate, items: BriefingItem[]): ProcurementTask {
+  const item = items.find((i) => i.id === t.itemId);
+  const urlTemplate = t.detailUrlOverride || item?.detailUrlTemplate;
+  const task: ProcurementTask = {
+    id: t.id,
+    itemId: t.itemId,
+    title: t.title,
+    description: t.description,
+    urgency: t.urgency,
+    amount: t.amount,
+    dueDate: t.dueDate,
+    requester: t.requester,
+    department: t.department,
+    vendor: t.vendor,
+  };
+  if (urlTemplate) {
+    task.detailUrl = resolveDetailUrl(urlTemplate, task);
+  }
+  return task;
 }
 
-// 카테고리별 그룹핑
-export function groupTasksByCategory(tasks: ProcurementTask[]): { category: string; label: string; icon: string; color: string; tasks: ProcurementTask[] }[] {
-  const groups: Record<string, ProcurementTask[]> = {};
+// 전체 브리핑 태스크 생성 (config + prefs 기반)
+export function generateAllProcurementTasks(
+  purchaseRequests: PurchaseRequest[],
+  enabledItems: BriefingItem[],
+  enabledTemplates: BriefingTaskTemplate[],
+  prefs: UserBriefingPrefs,
+): ProcurementTask[] {
+  const enabledItemIds = new Set(enabledItems.map((i) => i.id));
+  const visibleItemIds = new Set(
+    prefs.itemPrefs.filter((ip) => ip.visible && enabledItemIds.has(ip.itemId)).map((ip) => ip.itemId),
+  );
 
-  for (const task of tasks) {
-    if (!groups[task.category]) groups[task.category] = [];
-    groups[task.category].push(task);
+  // 1. 템플릿 → 태스크 변환 (활성 항목 + 사용자 visible만)
+  const templateTasks = enabledTemplates
+    .filter((t) => visibleItemIds.has(t.itemId))
+    .map((t) => templateToTask(t, enabledItems));
+
+  // 2. PR pending → pr_approval 태스크 (해당 항목이 활성+visible일 때만)
+  const prApprovalItem = enabledItems.find((i) => i.id === 'pr_approval');
+  const prApprovals = visibleItemIds.has('pr_approval') && prApprovalItem
+    ? purchaseRequests.filter((pr) => pr.status === 'pending').map((pr) => prToApprovalTask(pr, prApprovalItem))
+    : [];
+
+  let allTasks = [...prApprovals, ...templateTasks];
+
+  // 3. 긴급도 필터 적용
+  if (prefs.urgencyFilter === 'high_only') {
+    allTasks = allTasks.filter((t) => t.urgency === 'high');
+  } else if (prefs.urgencyFilter === 'medium_up') {
+    allTasks = allTasks.filter((t) => t.urgency === 'high' || t.urgency === 'medium');
   }
 
-  // 긴급한 것 먼저, 카테고리 순서 유지
-  const order = ['pr_approval', 'bidding', 'contract', 'po_delivery', 'vendor'];
-  return order
-    .filter((cat) => groups[cat]?.length > 0)
-    .map((cat) => ({
-      category: cat,
-      ...PROCUREMENT_TASK_CATEGORIES[cat],
-      tasks: groups[cat].sort((a, b) => {
-        const urgencyOrder = { high: 0, medium: 1, low: 2 };
-        return urgencyOrder[a.urgency] - urgencyOrder[b.urgency];
-      }),
-    }));
+  // 4. 사용자 항목 정렬 적용
+  const itemSortMap = new Map(prefs.itemPrefs.map((ip) => [ip.itemId, ip.sortOrder]));
+  const urgencyOrder = { high: 0, medium: 1, low: 2 };
+
+  allTasks.sort((a, b) => {
+    const itemA = itemSortMap.get(a.itemId) ?? 99;
+    const itemB = itemSortMap.get(b.itemId) ?? 99;
+    if (itemA !== itemB) return itemA - itemB;
+    return urgencyOrder[a.urgency] - urgencyOrder[b.urgency];
+  });
+
+  // 5. 항목당 최대 건수 제한
+  if (prefs.maxTasksPerItem > 0) {
+    const countMap: Record<string, number> = {};
+    allTasks = allTasks.filter((t) => {
+      countMap[t.itemId] = (countMap[t.itemId] || 0) + 1;
+      return countMap[t.itemId] <= prefs.maxTasksPerItem;
+    });
+  }
+
+  return allTasks;
+}
+
+// 항목별 그룹핑 (config 기반 메타데이터)
+export function groupTasksByItem(
+  tasks: ProcurementTask[],
+  items: BriefingItem[],
+  userItemPrefs: UserItemPref[],
+): { itemId: string; label: string; icon: string; color: string; tasks: ProcurementTask[] }[] {
+  const groups: Record<string, ProcurementTask[]> = {};
+  for (const task of tasks) {
+    if (!groups[task.itemId]) groups[task.itemId] = [];
+    groups[task.itemId].push(task);
+  }
+
+  const itemMap = new Map(items.map((i) => [i.id, i]));
+  const itemSortMap = new Map(userItemPrefs.map((ip) => [ip.itemId, ip.sortOrder]));
+
+  const urgencyOrder = { high: 0, medium: 1, low: 2 };
+
+  return Object.keys(groups)
+    .sort((a, b) => (itemSortMap.get(a) ?? 99) - (itemSortMap.get(b) ?? 99))
+    .map((itemId) => {
+      const config = itemMap.get(itemId);
+      return {
+        itemId,
+        label: config?.label || itemId,
+        icon: config?.icon || 'FileText',
+        color: config?.color || 'gray',
+        tasks: groups[itemId].sort((a, b) => urgencyOrder[a.urgency] - urgencyOrder[b.urgency]),
+      };
+    });
 }
 
 // 브리핑 인사 메시지 생성
 export function formatBriefingGreeting(
   userName: string,
   tasks: ProcurementTask[],
+  items?: BriefingItem[],
 ): string {
   const greeting = getTimeGreeting();
   const urgentCount = tasks.filter((t) => t.urgency === 'high').length;
@@ -175,7 +165,6 @@ export function formatBriefingGreeting(
   lines.push('📋 오늘의 업무 요약');
   lines.push(`총 ${totalCount}건의 업무가 대기 중이며, 처리 예상 금액은 ${formatKRW(totalAmount)}입니다.`);
 
-  // 긴급 건 하이라이트
   if (urgentCount > 0) {
     const urgentTasks = tasks.filter((t) => t.urgency === 'high');
     const urgentSummary = urgentTasks.map((t) => {
@@ -188,17 +177,22 @@ export function formatBriefingGreeting(
     lines.push('즉시 확인이 필요합니다.');
   }
 
-  // 카테고리별 요약 (금액 포함)
+  // 항목별 요약
   lines.push('');
-  const grouped = groupTasksByCategory(tasks);
-  const catIcons: Record<string, string> = {
-    pr_approval: '📝', bidding: '📊', contract: '📄', po_delivery: '📦', vendor: '🏢',
-  };
-  for (const group of grouped) {
-    const icon = catIcons[group.category] || '📋';
-    const groupAmount = group.tasks.reduce((sum, t) => sum + (t.amount || 0), 0);
+  const itemMap = items ? new Map(items.map((i) => [i.id, i])) : null;
+
+  const grouped: Record<string, ProcurementTask[]> = {};
+  for (const task of tasks) {
+    if (!grouped[task.itemId]) grouped[task.itemId] = [];
+    grouped[task.itemId].push(task);
+  }
+
+  for (const [itemId, itemTasks] of Object.entries(grouped)) {
+    const item = itemMap?.get(itemId);
+    const label = item?.label || itemId;
+    const groupAmount = itemTasks.reduce((sum, t) => sum + (t.amount || 0), 0);
     const amountStr = groupAmount > 0 ? `  |  ${formatKRW(groupAmount)}` : '';
-    lines.push(`${icon} ${group.label} — ${group.tasks.length}건${amountStr}`);
+    lines.push(`📋 ${label} — ${itemTasks.length}건${amountStr}`);
   }
 
   lines.push('━━━━━━━━━━━━━━━━━━━━━━');
@@ -207,7 +201,7 @@ export function formatBriefingGreeting(
   return lines.join('\n');
 }
 
-// 업무 목록 안내 메시지 (카테고리별 그룹 포함)
+// 업무 목록 안내 메시지
 export function formatTaskListIntro(tasks: ProcurementTask[]): string {
   const urgentTasks = tasks.filter((t) => t.urgency === 'high');
   const normalTasks = tasks.filter((t) => t.urgency !== 'high');
@@ -235,42 +229,48 @@ export function formatTaskListIntro(tasks: ProcurementTask[]): string {
   return lines.join('\n');
 }
 
-// 카테고리별 안내 코멘트 생성
-function getCategoryAdvice(task: ProcurementTask): string[] {
+// 항목별 안내 코멘트 생성
+function getItemAdvice(task: ProcurementTask): string[] {
   const lines: string[] = [];
+  const id = task.itemId;
 
-  switch (task.category) {
-    case 'pr_approval':
-      if (task.urgency === 'high') {
-        lines.push('⚡ 긴급 구매요청입니다. 현업 부서에서 빠른 처리를 요청하고 있어요.');
-      }
-      lines.push('💡 승인 시 자동으로 다음 결재 단계로 이관됩니다.');
-      break;
-    case 'bidding':
-      if (task.urgency === 'high') {
-        lines.push('⚡ 입찰 마감이 임박했습니다. 견적서 비교 후 빠른 의사결정이 필요해요.');
-      }
-      lines.push('💡 견적 비교표를 대시보드에서 상세 확인하실 수 있습니다.');
-      break;
-    case 'contract':
-      if (task.urgency === 'high') {
-        lines.push('⚡ 계약 만료가 가까워지고 있어요. 갱신 여부를 빠르게 결정해주세요.');
-      }
-      lines.push('💡 계약 조건 변경 시 법무팀 검토가 필요할 수 있습니다.');
-      break;
-    case 'po_delivery':
-      if (task.urgency === 'high') {
-        lines.push('⚡ 긴급 납품 건입니다. 입고 확인 후 즉시 검수를 진행해주세요.');
-      } else {
-        lines.push('💡 납품 완료 후 검수 결과를 시스템에 등록해주세요.');
-      }
-      break;
-    case 'vendor':
-      if (task.urgency === 'high') {
-        lines.push('⚡ 마감이 임박한 협력사 관리 업무입니다.');
-      }
-      lines.push('💡 협력사 평가 결과는 향후 입찰 참여 자격에 반영됩니다.');
-      break;
+  if (id === 'pr_approval' || id === 'my_approvals') {
+    if (task.urgency === 'high') {
+      lines.push('⚡ 긴급 구매요청입니다. 현업 부서에서 빠른 처리를 요청하고 있어요.');
+    }
+    lines.push('💡 승인 시 자동으로 다음 결재 단계로 이관됩니다.');
+  } else if (id === 'bidding') {
+    if (task.urgency === 'high') {
+      lines.push('⚡ 입찰 마감이 임박했습니다. 견적서 비교 후 빠른 의사결정이 필요해요.');
+    }
+    lines.push('💡 견적 비교표를 대시보드에서 상세 확인하실 수 있습니다.');
+  } else if (id === 'contract') {
+    if (task.urgency === 'high') {
+      lines.push('⚡ 계약 만료가 가까워지고 있어요. 갱신 여부를 빠르게 결정해주세요.');
+    }
+    lines.push('💡 계약 조건 변경 시 법무팀 검토가 필요할 수 있습니다.');
+  } else if (id === 'po_delivery') {
+    if (task.urgency === 'high') {
+      lines.push('⚡ 긴급 납품 건입니다. 입고 확인 후 즉시 검수를 진행해주세요.');
+    } else {
+      lines.push('💡 납품 완료 후 검수 결과를 시스템에 등록해주세요.');
+    }
+  } else if (id === 'vendor') {
+    if (task.urgency === 'high') {
+      lines.push('⚡ 마감이 임박한 협력사 관리 업무입니다.');
+    }
+    lines.push('💡 협력사 평가 결과는 향후 입찰 참여 자격에 반영됩니다.');
+  } else if (id === 'overdue_monitor') {
+    lines.push('⚡ 처리 기한이 초과된 건입니다. 담당자에게 독촉이 필요할 수 있습니다.');
+  } else if (id === 'compliance_check') {
+    lines.push('⚠️ 규정 위반 가능성이 있는 건입니다. 상세 내역을 확인해주세요.');
+  } else if (id === 'purchase_stats') {
+    lines.push('📊 구매 통계 리포트입니다. 추이 분석을 참고해주세요.');
+  } else {
+    if (task.urgency === 'high') {
+      lines.push('⚡ 긴급 처리가 필요한 업무입니다.');
+    }
+    lines.push('💡 상세 내용을 확인하고 적절한 조치를 취해주세요.');
   }
 
   return lines;
@@ -280,23 +280,23 @@ function getCategoryAdvice(task: ProcurementTask): string[] {
 export function getTaskDetailText(
   task: ProcurementTask,
   purchaseRequests: PurchaseRequest[],
+  items?: BriefingItem[],
 ): string {
   const lines: string[] = [];
-  const catInfo = PROCUREMENT_TASK_CATEGORIES[task.category];
+  const itemMap = items ? new Map(items.map((i) => [i.id, i])) : null;
+  const itemLabel = itemMap?.get(task.itemId)?.label || task.itemId;
   const urgencyLabels: Record<string, string> = { high: '🔴 긴급', medium: '🟡 보통', low: '🟢 여유' };
 
   lines.push(`📌 ${task.title}`);
   lines.push('');
-
-  // 기본 정보 테이블
-  lines.push(`분류: ${catInfo?.label || task.category}`);
+  lines.push(`분류: ${itemLabel}`);
   lines.push(`긴급도: ${urgencyLabels[task.urgency]}`);
   if (task.requester) lines.push(`요청자: ${task.requester}${task.department ? ` (${task.department})` : ''}`);
   if (task.vendor) lines.push(`거래처: ${task.vendor}`);
   if (task.amount) lines.push(`금액: ${formatKRW(task.amount)}`);
   if (task.dueDate) lines.push(`처리 기한: ${task.dueDate}`);
+  if (task.detailUrl) lines.push(`🔗 상세보기: ${task.detailUrl}`);
 
-  // 관련 PR 상세 정보
   if (task.relatedPrId) {
     const pr = purchaseRequests.find((p) => p.id === task.relatedPrId);
     if (pr) {
@@ -318,8 +318,7 @@ export function getTaskDetailText(
     }
   }
 
-  // 카테고리별 맥락 코멘트
-  const advice = getCategoryAdvice(task);
+  const advice = getItemAdvice(task);
   if (advice.length > 0) {
     lines.push('');
     lines.push(...advice);

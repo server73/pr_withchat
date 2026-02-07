@@ -3,6 +3,8 @@ import './globals.css';
 import Sidebar from '@/components/layout/Sidebar';
 import { PRProvider } from '@/lib/prContext';
 import { SchemaProvider } from '@/lib/schemaContext';
+import { BriefingConfigProvider } from '@/lib/briefingConfigContext';
+import { UserBriefingPrefsProvider } from '@/lib/userBriefingPrefsContext';
 
 export const metadata: Metadata = {
   title: 'PR Assistant - 구매요청 도우미',
@@ -18,14 +20,18 @@ export default function RootLayout({
     <html lang="ko">
       <body className="overflow-hidden">
         <SchemaProvider>
-          <PRProvider>
-            <div className="flex h-screen">
-              <Sidebar />
-              <main className="flex-1 overflow-hidden">
-                {children}
-              </main>
-            </div>
-          </PRProvider>
+          <BriefingConfigProvider>
+            <UserBriefingPrefsProvider>
+              <PRProvider>
+                <div className="flex h-screen">
+                  <Sidebar />
+                  <main className="flex-1 overflow-hidden">
+                    {children}
+                  </main>
+                </div>
+              </PRProvider>
+            </UserBriefingPrefsProvider>
+          </BriefingConfigProvider>
         </SchemaProvider>
       </body>
     </html>

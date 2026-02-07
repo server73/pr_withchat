@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { MessageSquare, LayoutDashboard, MessageCircle, Database, Sun } from 'lucide-react';
+import { MessageSquare, LayoutDashboard, MessageCircle, Settings, Sun } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 
@@ -10,7 +10,7 @@ const navItems = [
   { href: '/chat', label: '구매요청', icon: MessageSquare },
   { href: '/briefing', label: '업무 브리핑', icon: Sun },
   { href: '/dashboard', label: '대시보드', icon: LayoutDashboard },
-  { href: '/admin', label: '스키마 관리', icon: Database },
+  { href: '/admin', label: '관리자 설정', icon: Settings },
 ];
 
 const recentChats = [
