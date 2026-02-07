@@ -1,4 +1,4 @@
-import { Package, Monitor, Wrench, Box, ShoppingCart, Cpu, FileText } from 'lucide-react';
+import { Package, Monitor, Wrench, Box, ShoppingCart, Cpu, FileText, Sun, Coffee, Clock, AlertTriangle, Calendar } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export const ICON_MAP: Record<string, LucideIcon> = {
@@ -9,6 +9,11 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   ShoppingCart,
   Cpu,
   FileText,
+  Sun,
+  Coffee,
+  Clock,
+  AlertTriangle,
+  Calendar,
 };
 
 export const COLOR_GRADIENTS: Record<string, string> = {

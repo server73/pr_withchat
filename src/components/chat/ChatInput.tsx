@@ -8,9 +8,10 @@ interface ChatInputProps {
   onSend: (text: string) => void;
   disabled?: boolean;
   placeholder?: string;
+  footerText?: string;
 }
 
-export default function ChatInput({ onSend, disabled, placeholder = '메시지를 입력하세요...' }: ChatInputProps) {
+export default function ChatInput({ onSend, disabled, placeholder = '메시지를 입력하세요...', footerText = 'AI 도우미가 구매요청 작성을 도와드립니다' }: ChatInputProps) {
   const [text, setText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -72,7 +73,7 @@ export default function ChatInput({ onSend, disabled, placeholder = '메시지�
           </div>
         </div>
         <p className="text-center text-[11px] text-muted-foreground mt-2.5">
-          AI 도우미가 구매요청 작성을 도와드립니다
+          {footerText}
         </p>
       </div>
     </div>

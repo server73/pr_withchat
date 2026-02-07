@@ -73,6 +73,7 @@ export interface ChatMessage {
   timestamp: Date;
   options?: QuickReplyOption[];
   summaryCard?: PurchaseRequest;
+  taskCards?: ProcurementTask[];
 }
 
 // 채팅 상태머신 스텝 (스키마 기반 — 5개로 간소화)
@@ -131,6 +132,26 @@ export interface PurchaseTypeSchema {
   color?: string;
   fields: FieldSchema[];
   active: boolean;
+}
+
+// ========== 브리핑 모드 ==========
+
+export type BriefingStep = 'idle' | 'greeting' | 'task_list' | 'task_detail';
+
+export type ProcurementCategory = 'pr_approval' | 'bidding' | 'contract' | 'po_delivery' | 'vendor';
+
+export interface ProcurementTask {
+  id: string;
+  category: ProcurementCategory;
+  title: string;
+  description: string;
+  urgency: 'high' | 'medium' | 'low';
+  amount?: number;
+  dueDate?: string;
+  requester?: string;
+  department?: string;
+  relatedPrId?: string;
+  vendor?: string;
 }
 
 // 대시보드 필터

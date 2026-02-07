@@ -2,12 +2,14 @@ import type { ChatMessage } from '@/types';
 import { Bot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import PRSummaryCard from './PRSummaryCard';
+import BriefingTaskCard from './BriefingTaskCard';
 
 interface MessageBubbleProps {
   message: ChatMessage;
+  onTaskClick?: (taskId: string) => void;
 }
 
-export default function MessageBubble({ message }: MessageBubbleProps) {
+export default function MessageBubble({ message, onTaskClick }: MessageBubbleProps) {
   const isBot = message.sender === 'bot';
 
   if (isBot) {
@@ -27,6 +29,14 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
           {message.summaryCard && (
             <div className="mt-3">
               <PRSummaryCard pr={message.summaryCard} />
+            </div>
+          )}
+
+          {message.taskCards && message.taskCards.length > 0 && onTaskClick && (
+            <div className="mt-3 space-y-2">
+              {message.taskCards.map((task) => (
+                <BriefingTaskCard key={task.id} task={task} onClick={onTaskClick} />
+              ))}
             </div>
           )}
         </div>

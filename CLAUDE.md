@@ -49,19 +49,23 @@ pr_withchat/
 │   │   ├── globals.css         # 글로벌 스타일 + @theme inline 색상 토큰
 │   │   ├── layout.tsx          # 루트 레이아웃 (Sidebar + PRContext)
 │   │   ├── page.tsx            # / → /chat 리다이렉트
-│   │   ├── chat/page.tsx       # 채팅 화면
+│   │   ├── chat/page.tsx       # 구매요청자 채팅 화면
+│   │   ├── briefing/page.tsx   # 구매담당자 업무 브리핑 화면
 │   │   ├── dashboard/page.tsx  # 대시보드 화면
 │   │   └── admin/page.tsx      # 스키마 관리 화면
 │   ├── components/
 │   │   ├── ui/                 # shadcn/ui 프리미티브 (수정 금지)
 │   │   ├── layout/Sidebar.tsx  # 다크 사이드바 (ChatGPT 스타일)
-│   │   ├── chat/               # 채팅 관련 컴포넌트
-│   │   │   ├── ChatContainer.tsx   # 웰컴 스크린 + 채팅 영역
-│   │   │   ├── ChatInput.tsx       # 하단 고정 textarea 입력창
-│   │   │   ├── MessageBubble.tsx   # 봇/유저 메시지 렌더링
-│   │   │   ├── QuickReplyButtons.tsx # 선택지 버튼
-│   │   │   ├── PRSummaryCard.tsx   # 구매요청 요약 카드
-│   │   │   └── TypingIndicator.tsx # 타이핑 애니메이션
+│   │   ├── chat/               # 구매요청 채팅 관련 컴포넌트
+│   │   │   ├── ChatContainer.tsx     # 구매요청 전용 웰컴 + 채팅
+│   │   │   ├── ChatInput.tsx         # 하단 고정 textarea 입력창 (공용)
+│   │   │   ├── MessageBubble.tsx     # 봇/유저 메시지 렌더링 (공용)
+│   │   │   ├── QuickReplyButtons.tsx # 선택지 버튼 (공용)
+│   │   │   ├── BriefingTaskCard.tsx  # 업무 브리핑 태스크 카드
+│   │   │   ├── PRSummaryCard.tsx     # 구매요청 요약 카드
+│   │   │   └── TypingIndicator.tsx   # 타이핑 애니메이션 (공용)
+│   │   ├── briefing/           # 업무 브리핑 전용 컴포넌트
+│   │   │   └── BriefingContainer.tsx # 브리핑 전용 웰컴 + 채팅
 │   │   ├── dashboard/          # 대시보드 관련 컴포넌트
 │   │   │   ├── StatsCards.tsx      # 통계 카드 (4개)
 │   │   │   ├── FilterBar.tsx      # 검색/필터
@@ -71,8 +75,10 @@ pr_withchat/
 │   │       ├── SchemaEditor.tsx   # 스키마 편집기 (유형 정보 + 필드 목록)
 │   │       └── FieldRow.tsx       # 필드 행 (조회/편집/삭제)
 │   ├── hooks/
-│   │   └── useChatEngine.ts    # 채팅 상태머신 (핵심 로직)
+│   │   ├── useChatEngine.ts    # 구매요청 채팅 상태머신
+│   │   └── useBriefingEngine.ts # 업무 브리핑 상태머신
 │   ├── lib/
+│   │   ├── briefingDataGenerator.ts # 브리핑 데이터 생성 (ProcurementTask, 메시지 포매팅)
 │   │   ├── chatFlows.ts        # 대화 플로우 설정
 │   │   ├── constants.ts        # 상수 (라벨, Tailwind 색상 클래스)
 │   │   ├── mockData.ts         # Mock 구매요청 데이터
@@ -99,11 +105,20 @@ pr_withchat/
 - `sendMessage(value, displayText?)` — value는 로직 분기용, displayText는 화면 표시용
 - `src/components/ui/*` 파일은 shadcn/ui가 생성한 것이므로 직접 수정하지 않음
 
-## 핵심 채팅 플로우
+## 두 가지 채팅 모드 (완전 분리)
 
+### 1. 구매요청 채팅 (`/chat`) — 구매요청자용
+- `ChatContainer` + `useChatEngine`
 - 3가지 구매 유형: `general`(일반), `it_asset`(IT자산), `mro`(소모품)
 - 웰컴 화면 카테고리 카드 → `startWithCategory()`로 select_category 단계 건너뜀
 - 각 유형별 질문 → 확인 → 제출 완료 (대시보드에 자동 반영)
+
+### 2. 업무 브리핑 (`/briefing`) — 구매담당자용
+- `BriefingContainer` + `useBriefingEngine`
+- 5가지 업무 카테고리: `pr_approval`(구매요청 승인), `bidding`(입찰/견적), `contract`(계약), `po_delivery`(발주/납품), `vendor`(협력사 관리)
+- 브리핑 시작 → 인사/요약 → 태스크 카드 목록 → 클릭 시 상세 → 승인/이동
+- PR 데이터에서 pending 건 자동 추출 + Mock 구매업무 데이터 결합
+- **구매요청 채팅과 완전히 분리된 라우트, 컨테이너, 엔진 사용**
 
 ## 참고사항
 

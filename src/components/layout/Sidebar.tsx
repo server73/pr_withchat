@@ -2,13 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { MessageSquare, LayoutDashboard, Plus, MessageCircle, Database } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { MessageSquare, LayoutDashboard, MessageCircle, Database, Sun } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { href: '/chat', label: '채팅', icon: MessageSquare },
+  { href: '/chat', label: '구매요청', icon: MessageSquare },
+  { href: '/briefing', label: '업무 브리핑', icon: Sun },
   { href: '/dashboard', label: '대시보드', icon: LayoutDashboard },
   { href: '/admin', label: '스키마 관리', icon: Database },
 ];
@@ -25,20 +25,8 @@ export default function Sidebar() {
 
   return (
     <aside className="w-[260px] shrink-0 bg-sidebar text-sidebar-foreground flex flex-col h-full">
-      {/* 새 구매요청 버튼 */}
-      <div className="p-3">
-        <Link href="/chat">
-          <Button
-            variant="outline"
-            className="w-full justify-start gap-2 border-white/20 text-white bg-transparent hover:bg-sidebar-muted hover:text-white h-10"
-          >
-            <Plus className="w-4 h-4" />
-            새 구매요청
-          </Button>
-        </Link>
-      </div>
-
       {/* 네비게이션 */}
+      <div className="pt-3" />
       <nav className="px-2 space-y-0.5">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
